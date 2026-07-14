@@ -1,0 +1,42 @@
+target_repo: ../../tests/fixtures/sample_repo
+
+description: >
+  A tiny CLI tool that divides two numbers, used here as a minimal example
+  repo to demonstrate autodoc-harness itself. It deliberately covers a
+  success case, a precision-loss edge case, and an explicit error case.
+
+entry_points:
+  - path: src/main.py
+    note: CLI entry point - parses arguments and calls the divide function.
+
+hints: []
+
+output:
+  dir: docs
+  overwrite: true
+
+model:
+  name: ollama_chat/gemma4:e4b
+  api_base: http://localhost:11434
+  temperature: 0.2
+  max_tokens: 8192
+  timeout: 250
+
+guardrails:
+  max_files_per_component: 40
+  max_tool_calls_master_explorer: 20
+  max_tool_calls_per_code_explorer: 15
+  max_tool_calls_reviewer_per_doc: 10
+  max_extraction_attempts: 3
+  max_file_bytes: 51200
+  max_total_cost_usd: 5.00
+  max_run_seconds: 3600
+  max_parallel_code_explorers: 5
+  max_traversal_depth: 6
+
+ignore_globs: []
+honor_gitignore: true
+
+logging:
+  level: info
+  log_file: null

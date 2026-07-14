@@ -1,0 +1,151 @@
+{
+  "component_id": "cli-interface",
+  "name": "Main Application Interface",
+  "status": "ok",
+  "error": null,
+  "summary": "The Main Application Interface is a CLI tool responsible for performing floating-point division of two numbers provided as command-line arguments. It manages the entire execution flow, from argument parsing and type validation to calling the core calculation logic while explicitly handling three failure modes: incorrect usage (wrong number of arguments), invalid input types (non-numeric strings), and mathematical errors (zero division or precision loss).",
+  "responsibilities": [
+    "Parsing command-line arguments (`sys.argv`).",
+    "Validating that exactly two arguments are provided.",
+    "Converting string arguments to floating-point numbers, handling `ValueError` if conversion fails.",
+    "Orchestrating the division process by calling `src/calculator.py:divide()`.",
+    "Catching and managing specific exceptions (`ZeroDivisionError`) raised during calculation.",
+    "Printing results or detailed error messages to `stderr` and returning appropriate exit codes (0 for success, 1 for input/math errors, 2 for usage errors)."
+  ],
+  "public_interfaces": [
+    {
+      "name": "main()",
+      "kind": "function",
+      "signature_text": "def main() -> int:",
+      "description": "The primary entry point function that manages the CLI workflow. It processes arguments, validates types, calls the core division logic, and determines the final exit code.",
+      "file": "src/main.py",
+      "citations": [
+        {
+          "file": "src/main.py",
+          "lines": "8-10",
+          "note": "Handles usage error (incorrect number of arguments)."
+        },
+        {
+          "file": "src/main.py",
+          "lines": "12-14",
+          "note": "Handles type conversion failure (`ValueError`)."
+        },
+        {
+          "file": "src/main.py",
+          "lines": "16-18",
+          "note": "Handles mathematical error (`ZeroDivisionError`) from the core utility."
+        }
+      ]
+    },
+    {
+      "name": "divide(a: float, b: float)",
+      "kind": "function",
+      "signature_text": "def divide(a: float, b: float) -> float:",
+      "description": "Performs the floating-point division of 'a' by 'b'. It includes specialized logic to detect and warn about near-zero divisors (precision loss) and explicitly raise an error for zero division.",
+      "file": "src/calculator.py",
+      "citations": [
+        {
+          "file": "src/calculator.py",
+          "lines": "13-14",
+          "note": "Red Path: Explicitly raises ZeroDivisionError if b == 0."
+        },
+        {
+          "file": "src/calculator.py",
+          "lines": "18-21",
+          "note": "Yellow Path: Issues a warning if |b| is extremely small (precision loss)."
+        },
+        {
+          "file": "src/calculator.py",
+          "lines": "24-26",
+          "note": "Green Path: Performs standard division and returns the result."
+        }
+      ]
+    }
+  ],
+  "external_dependencies": [
+    "sys",
+    "warnings"
+  ],
+  "internal_dependencies": [
+    "src/calculator.py"
+  ],
+  "paths": [
+    {
+      "kind": "red",
+      "title": "Usage Error (Incorrect Arguments)",
+      "narrative": "If the script is called with an argument count other than 3 (program name + two numbers), `main()` detects this using `len(sys.argv) != 3`. It prints a usage message to standard error and returns exit code 2.",
+      "citations": [
+        {
+          "file": "src/main.py",
+          "lines": "8-10",
+          "note": "Checks argument count and prints usage."
+        }
+      ]
+    },
+    {
+      "kind": "red",
+      "title": "Invalid Input Type Error",
+      "narrative": "If the arguments provided cannot be converted to floats (e.g., 'abc'), the `try...except ValueError` block in `main()` catches this. It prints an error message to standard error and returns exit code 1.",
+      "citations": [
+        {
+          "file": "src/main.py",
+          "lines": "12-14",
+          "note": "Catches ValueError during float conversion."
+        }
+      ]
+    },
+    {
+      "kind": "red",
+      "title": "Zero Division Error",
+      "narrative": "If the denominator is exactly zero, `src/calculator.py:divide()` explicitly raises a `ZeroDivisionError`. This error is caught in `main()`, which prints a descriptive message to standard error and returns exit code 1.",
+      "citations": [
+        {
+          "file": "src/calculator.py",
+          "lines": "13-14",
+          "note": "Raises ZeroDivisionError."
+        },
+        {
+          "file": "src/main.py",
+          "lines": "16-18",
+          "note": "Catches and handles the ZeroDivisionError."
+        }
+      ]
+    },
+    {
+      "kind": "green",
+      "title": "Successful Division (Happy Path)",
+      "narrative": "The ideal path: The script receives two valid float arguments. `main()` successfully converts them, calls `divide()`, which performs standard division and returns the result. The final result is printed to standard output, and exit code 0 is returned.",
+      "citations": [
+        {
+          "file": "src/main.py",
+          "lines": "14-15",
+          "note": "Successful call to divide() and printing the result."
+        }
+      ]
+    },
+    {
+      "kind": "yellow",
+      "title": "Precision Loss Warning (Edge Case)",
+      "narrative": "If the denominator is non-zero but extremely small (less than $10^{-6}$), `divide()` detects this condition. It issues a warning via Python's `warnings` module, alerting the user that the result may lose floating-point precision, before proceeding with and returning the calculated value.",
+      "citations": [
+        {
+          "file": "src/calculator.py",
+          "lines": "18-21",
+          "note": "Checks `abs(b) < PRECISION_WARNING_THRESHOLD` and issues a warning."
+        }
+      ]
+    }
+  ],
+  "open_questions": [],
+  "files_visited": [
+    "src/calculator.py",
+    "src/main.py"
+  ],
+  "stats": {
+    "tool_calls": 4,
+    "tokens_in": 10718,
+    "tokens_out": 5631,
+    "cost_usd": 0.0,
+    "duration_s": 331.933348
+  }
+}

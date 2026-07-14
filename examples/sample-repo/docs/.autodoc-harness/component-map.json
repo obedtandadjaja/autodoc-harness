@@ -1,0 +1,42 @@
+{
+  "target_repo": "/private/tmp/autodoc-example",
+  "entry_points": [
+    "src/main.py"
+  ],
+  "components": [
+    {
+      "component_id": "cli-interface",
+      "name": "Main Application Interface",
+      "summary": "This module serves as the command-line interface (CLI) entry point. It is responsible for parsing command-line arguments, validating input types (ensuring they are floats), and orchestrating the division process by calling the core utility function while managing exit codes for various failure modes (usage errors, invalid inputs, zero division).",
+      "seed_paths": [
+        "src/main.py"
+      ],
+      "related_component_ids": [
+        "calculator-logic"
+      ],
+      "role": "integration"
+    },
+    {
+      "component_id": "calculator-logic",
+      "name": "Division Utility",
+      "summary": "This module contains the core business logic for division. It implements robust error handling by explicitly raising a descriptive `ZeroDivisionError`. Furthermore, it includes specific logic to detect and warn about near-zero divisors, addressing an intentional precision-loss edge case.",
+      "seed_paths": [
+        "src/calculator.py"
+      ],
+      "related_component_ids": [
+        "cli-interface"
+      ],
+      "role": "core"
+    }
+  ],
+  "unresolved_notes": [],
+  "generated_at": "2026-07-14T16:46:42.011119Z",
+  "model": "ollama_chat/gemma4:e4b",
+  "stats": {
+    "tool_calls": 4,
+    "tokens_in": 7492,
+    "tokens_out": 1669,
+    "cost_usd": 0.0,
+    "duration_s": 109.116183
+  }
+}

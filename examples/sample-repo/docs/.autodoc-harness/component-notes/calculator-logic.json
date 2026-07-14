@@ -1,0 +1,81 @@
+{
+  "component_id": "calculator-logic",
+  "name": "Division Utility",
+  "status": "ok",
+  "error": null,
+  "summary": "This module provides the core business logic for dividing two floating-point numbers (a / b). It implements robust error handling by explicitly raising a descriptive `ZeroDivisionError` when the divisor is zero. Furthermore, it includes specific logic to detect and warn about near-zero divisors (those whose absolute value falls below a defined threshold), addressing an intentional precision-loss edge case.",
+  "responsibilities": [
+    "Perform floating-point division of two numbers.",
+    "Handle the explicit error case where the divisor is zero by raising a descriptive `ZeroDivisionError`.",
+    "Issue a runtime warning when the divisor is extremely small (near zero), alerting the user to potential precision loss."
+  ],
+  "public_interfaces": [
+    {
+      "name": "divide",
+      "kind": "function",
+      "signature_text": "divide(a: float, b: float) -> float",
+      "description": "Divides the first argument (a) by the second argument (b). It handles zero division and near-zero divisors gracefully.",
+      "file": "src/calculator.py",
+      "citations": [
+        {
+          "file": "src/calculator.py",
+          "lines": "10-23",
+          "note": "Defines the core division logic and error handling."
+        }
+      ]
+    }
+  ],
+  "external_dependencies": [],
+  "internal_dependencies": [
+    "warnings (standard library)"
+  ],
+  "paths": [
+    {
+      "kind": "red",
+      "title": "Zero Division Error Handling (Red Path)",
+      "narrative": "If the divisor `b` is exactly zero, the function immediately raises a custom `ZeroDivisionError`. This provides a specific and descriptive error message (`cannot divide {a} by zero}`) instead of relying on Python's default division error.",
+      "citations": [
+        {
+          "file": "src/calculator.py",
+          "lines": "13-14",
+          "note": "The explicit check `if b == 0:` and subsequent raise statement."
+        }
+      ]
+    },
+    {
+      "kind": "yellow",
+      "title": "Near-Zero Divisor Warning (Yellow Path)",
+      "narrative": "If the absolute value of the divisor `b` is less than the defined threshold (`PRECISION_WARNING_THRESHOLD`, which is 1e-6), a warning is issued using `warnings.warn()`. This alerts the user that the resulting division may lose floating-point precision, even though the calculation proceeds.",
+      "citations": [
+        {
+          "file": "src/calculator.py",
+          "lines": "17-20",
+          "note": "The check `if abs(b) < PRECISION_WARNING_THRESHOLD:` and subsequent warning call."
+        }
+      ]
+    },
+    {
+      "kind": "green",
+      "title": "Standard Division (Green Path)",
+      "narrative": "When the divisor `b` is non-zero and sufficiently far from zero, the function executes standard floating-point division (`a / b`) and returns the result.",
+      "citations": [
+        {
+          "file": "src/calculator.py",
+          "lines": "21-23",
+          "note": "The final return statement `return a / b`."
+        }
+      ]
+    }
+  ],
+  "open_questions": [],
+  "files_visited": [
+    "src/calculator.py"
+  ],
+  "stats": {
+    "tool_calls": 4,
+    "tokens_in": 8538,
+    "tokens_out": 4088,
+    "cost_usd": 0.0,
+    "duration_s": 232.85854
+  }
+}

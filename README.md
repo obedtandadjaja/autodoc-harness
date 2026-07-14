@@ -10,10 +10,11 @@ yellow / red paths).
 
 ## Status
 
-MVP: all five pipeline stages are implemented and covered by scripted-fake/mocked
-tests. No `generate` run against a real model has happened yet - see
-[Validating against a real model](#validating-against-a-real-model) before trusting
-its output on a real repo.
+MVP: all five pipeline stages are implemented, covered by scripted-fake/mocked tests,
+and validated end-to-end against a real local model (see
+[`examples/sample-repo`](examples/sample-repo) for unedited real output). Still worth
+running against a repo you know well before trusting it on something important - see
+[Validating against a real model](#validating-against-a-real-model).
 
 ## Usage
 
@@ -24,7 +25,12 @@ uv sync --all-groups
 uv run autodoc-harness init --target /path/to/some-project
 
 # Edit /path/to/some-project/.autodoc.yaml: set entry_points to the files you
-# want traversal to start from, and confirm the model/API key env var.
+# want traversal to start from, confirm the model/API key env var, and fill in
+# `description` (a sentence about what the system does) - it noticeably improves
+# how components get named/framed, since otherwise the model has nothing but file
+# contents to infer intent from. `hints` is for locations worth checking that
+# aren't traversal starting points themselves (e.g. config files not imported by
+# any entry point).
 
 # Check the config without spending anything
 uv run autodoc-harness validate --config /path/to/some-project/.autodoc.yaml
@@ -96,28 +102,31 @@ model. Before trusting this against a real project:
 
 ### Using a local model (Ollama)
 
-Confirmed working against `ollama_chat/gemma4:12b` - correctly identified green/yellow/
-red paths in the sample fixture with accurate field names in the structured submission.
+Confirmed working against both `ollama_chat/gemma4:e4b` and `gemma4:12b` - see
+[`examples/sample-repo`](examples/sample-repo) for real, unedited output from `e4b`.
 Notes from that testing:
 
 - Use the `ollama_chat/` prefix, not `ollama/` - the latter doesn't reliably support
   tool calling and litellm's own docs warn it can cause infinite tool-call loops.
-- `gemma4:e4b` (the smaller/default Gemma 4 size) reasons about the code correctly but
-  does **not** reliably follow this harness's nested JSON schema for structured
-  output (it invents its own field names instead of matching `ComponentNotesSubmission`
-  etc.) - use `gemma4:12b` or larger for anything beyond a basic smoke test.
+- Structured output is obtained via a dedicated schema-constrained extraction call
+  (`response_format=`), separate from the tool-calling explore loop, rather than a
+  "submit tool" alongside the explore tools. An earlier submit-tool design worked
+  fine with Claude/GPT but real-model testing showed `gemma4:e4b` inventing its own
+  field names for it despite reasoning about the content correctly; splitting
+  extraction into its own call lets Ollama's grammar-constrained decoding actually
+  apply, and fixed it. See `agent_loop.py`'s module docstring for the full story.
 - Local inference is slow enough on a laptop that the default 120s per-call `timeout`
-  can be too tight for a 12b+ model - set `model.timeout` to `300` or higher in
-  `.autodoc.yaml`.
+  can be too tight, especially for 12b+ models - set `model.timeout` to `250`-`300`
+  or higher in `.autodoc.yaml`.
 - litellm has no pricing data for Ollama models, so `guardrails.max_total_cost_usd`
   won't meaningfully bound a local run - `max_run_seconds` and the `max_tool_calls_*`
   settings are the guardrails that actually apply.
 
 ```yaml
 model:
-  name: ollama_chat/gemma4:12b
+  name: ollama_chat/gemma4:e4b
   api_base: http://localhost:11434
-  timeout: 300
+  timeout: 250
   # api_key_env omitted entirely - local providers don't need one
 ```
 
