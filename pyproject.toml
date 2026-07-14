@@ -1,0 +1,65 @@
+[project]
+name = "autodoc-harness"
+version = "0.1.0"
+description = "Model-agnostic agentic harness for generating detailed technical documentation from source code"
+readme = "README.md"
+authors = [
+    { name = "Obed Tandadjaja", email = "obed.tandadjaja@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    # litellm 1.92+ dropped the pure-python wheel for a Rust-accelerated core and
+    # currently ships manylinux-only wheels (no macOS wheel yet), which would force
+    # every macOS contributor to build from source with a modern Rust toolchain.
+    # Pinned below that until litellm publishes macOS wheels.
+    "litellm>=1.55,<1.92",
+    "pydantic>=2.9",
+    "typer>=0.15",
+    "rich>=13.9",
+    "pyyaml>=6.0",
+    "pathspec>=0.12",
+]
+
+[project.scripts]
+autodoc-harness = "autodoc_harness.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/autodoc_harness"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "types-pyyaml>=6.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# B008: typer's API requires calling Option()/Argument() as parameter defaults,
+# which it introspects at decoration time - not the mutable-default footgun B008
+# otherwise guards against.
+ignore = ["B008"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["autodoc_harness.models", "autodoc_harness.agent_loop", "autodoc_harness.config"]
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
