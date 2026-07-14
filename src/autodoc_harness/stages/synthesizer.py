@@ -169,9 +169,13 @@ async def run_synthesizer(
     model_config = config.model.resolved_for_stage("synthesizer")
     map_context = _format_component_map(component_map)
     all_notes_context = "\n\n".join(format_component_notes(n) for n in component_notes)
+    description_prefix = (
+        f"System description: {config.description}\n\n" if config.description else ""
+    )
 
     architecture_md = await _synthesize_document(
         user_prompt=(
+            f"{description_prefix}"
             f"Write the architecture overview document.\n\n{ARCHITECTURE_INSTRUCTIONS}\n\n"
             f"Component map:\n{map_context}\n\nComponent notes:\n{all_notes_context}"
         ),
@@ -182,6 +186,7 @@ async def run_synthesizer(
 
     api_reference_md = await _synthesize_document(
         user_prompt=(
+            f"{description_prefix}"
             f"Write the API reference document.\n\n{API_REFERENCE_INSTRUCTIONS}\n\n"
             f"Component notes:\n{all_notes_context}"
         ),
@@ -194,6 +199,7 @@ async def run_synthesizer(
     for notes in component_notes:
         module_docs[notes.component_id] = await _synthesize_document(
             user_prompt=(
+                f"{description_prefix}"
                 f"Write the module documentation for '{notes.component_id}'.\n\n"
                 f"{_module_instructions(notes.component_id)}\n\n"
                 f"Component notes:\n{format_component_notes(notes)}"

@@ -33,6 +33,29 @@ DEFAULT_IGNORE_GLOBS: tuple[str, ...] = (
 )
 
 
+class PathNote(BaseModel):
+    """A repo-relative path plus an optional note explaining its relevance.
+
+    Used for both `entry_points` (traversal starting points) and `hints`
+    (additional locations worth checking that aren't necessarily reachable by
+    following imports from an entry point - e.g. config files, or anything else
+    referenced only by dynamic/string paths rather than static imports).
+
+    Accepts a bare string in YAML (`- src/main.py`) as shorthand for
+    `{path: src/main.py, note: null}`, so a note is opt-in, not required.
+    """
+
+    path: str
+    note: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_bare_string(cls, data: object) -> object:
+        if isinstance(data, str):
+            return {"path": data}
+        return data
+
+
 class ModelStageOverride(BaseModel):
     """Per-stage overrides layered on top of the top-level `model` config."""
 
@@ -127,7 +150,17 @@ class LoggingConfig(BaseModel):
 
 class Config(BaseModel):
     target_repo: Path
-    entry_points: list[str] = Field(min_length=1)
+    # Free-text context about what the system does - without this, exploration
+    # stages have nothing but file contents to infer intent from, which can lead
+    # to correct-but-oddly-framed component names/summaries that don't match the
+    # domain's own vocabulary.
+    description: str | None = None
+    entry_points: list[PathNote] = Field(min_length=1)
+    # Locations worth checking that aren't traversal starting points themselves -
+    # e.g. config files or anything else not reachable by following imports from
+    # an entry point. Master Explorer decides whether/how they relate to what it
+    # finds; unlike entry_points these may be directories, not just files.
+    hints: list[PathNote] = Field(default_factory=list)
     output: OutputConfig = Field(default_factory=OutputConfig)
     model: ModelConfig
     guardrails: GuardrailsConfig = Field(default_factory=GuardrailsConfig)
@@ -198,11 +231,16 @@ def validate_config_semantics(config: Config) -> list[str]:
         issues.append(f"target_repo does not exist or is not a directory: {config.target_repo}")
     else:
         for entry_point in config.entry_points:
-            entry_point_path = config.target_repo / entry_point
+            entry_point_path = config.target_repo / entry_point.path
             if not entry_point_path.is_file():
                 issues.append(
-                    f"entry point file not found: {entry_point} (resolved to {entry_point_path})"
+                    f"entry point file not found: {entry_point.path} "
+                    f"(resolved to {entry_point_path})"
                 )
+        for hint in config.hints:
+            hint_path = config.target_repo / hint.path
+            if not hint_path.exists():
+                issues.append(f"hint path not found: {hint.path} (resolved to {hint_path})")
 
     env_vars_needed = {
         env_var

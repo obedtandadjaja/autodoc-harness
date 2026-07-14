@@ -6,10 +6,32 @@ STARTER_CONFIG_TEMPLATE = """\
 # Path to the repository this config documents. Absolute, or relative to this file.
 target_repo: .
 
+# Free-text context about what this system does. Without it, the model has
+# nothing but file contents to infer intent from - a one-line description
+# noticeably improves how it names/frames components. Strongly recommended:
+# fill this in before running `generate`.
+description: null
+# description: >
+#   A CLI tool that syncs local files to S3, used by the data team's
+#   nightly backup job.
+
 # Files to start traversal from (relative to target_repo). The harness explores
 # everything reachable from these files - it does not scan the whole repo.
+# Each entry can be a bare path, or {path, note} to explain that entry point's
+# role (useful when there's more than one, e.g. a CLI vs. a web server):
 entry_points:
   - src/main.py
+  # - path: src/api/server.py
+  #   note: HTTP server entry point, separate from the CLI above
+
+# Optional: locations worth checking that aren't traversal starting points
+# themselves - e.g. config files or anything wired up dynamically rather than
+# imported statically, so they wouldn't otherwise be discovered by following
+# imports from the entry points. May be files or directories.
+hints: []
+# hints:
+#   - path: src/config.py
+#     note: Runtime configuration - not imported directly by main.py
 
 output:
   dir: docs        # written relative to target_repo

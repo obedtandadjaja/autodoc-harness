@@ -110,12 +110,16 @@ def _build_tools(boundary: RepoBoundary, max_file_bytes: int) -> list[ToolSpec]:
     ]
 
 
-def _user_prompt(*, doc_name: str, content: str, context: str) -> str:
-    return (
+def _user_prompt(*, doc_name: str, content: str, context: str, description: str | None) -> str:
+    sections = []
+    if description:
+        sections.append(f"System description: {description}")
+    sections.append(
         f"Document under review: {doc_name}\n\n"
-        f"--- BEGIN DOCUMENT ---\n{content}\n--- END DOCUMENT ---\n\n"
-        f"Structured notes this document was based on:\n{context}"
+        f"--- BEGIN DOCUMENT ---\n{content}\n--- END DOCUMENT ---"
     )
+    sections.append(f"Structured notes this document was based on:\n{context}")
+    return "\n\n".join(sections)
 
 
 def _format_findings(findings: list[ReviewFinding]) -> str:
@@ -166,6 +170,7 @@ async def _review_document(
     doc_name: str,
     content: str,
     context: str,
+    description: str | None,
     tools: list[ToolSpec],
     model_config: ResolvedModelConfig,
     budget: BudgetTracker,
@@ -176,7 +181,9 @@ async def _review_document(
 ) -> DocReviewResult:
     result = await run_agentic_loop(
         system_prompt=SYSTEM_PROMPT,
-        user_prompt=_user_prompt(doc_name=doc_name, content=content, context=context),
+        user_prompt=_user_prompt(
+            doc_name=doc_name, content=content, context=context, description=description
+        ),
         tools=tools,
         result_model=ReviewFindingsSubmission,
         model_config=model_config,
@@ -257,6 +264,7 @@ async def run_reviewer(
         doc_name="architecture.md",
         content=docs.architecture_md,
         context=all_notes_context,
+        description=config.description,
         tools=tools,
         model_config=model_config,
         budget=budget,
@@ -271,6 +279,7 @@ async def run_reviewer(
         doc_name="api-reference.md",
         content=docs.api_reference_md,
         context=all_notes_context,
+        description=config.description,
         tools=tools,
         model_config=model_config,
         budget=budget,
@@ -291,6 +300,7 @@ async def run_reviewer(
             doc_name=doc_name,
             content=content,
             context=context,
+            description=config.description,
             tools=tools,
             model_config=model_config,
             budget=budget,

@@ -61,16 +61,20 @@ def _build_tools(boundary: RepoBoundary, max_file_bytes: int) -> list[ToolSpec]:
     ]
 
 
-def _user_prompt(component: ComponentRef) -> str:
+def _user_prompt(component: ComponentRef, *, description: str | None) -> str:
     seed_paths = "\n".join(f"- {p}" for p in component.seed_paths)
-    return (
+    sections = []
+    if description:
+        sections.append(f"System description: {description}")
+    sections.append(
         "Component to document:\n"
         f"- component_id: {component.component_id}\n"
         f"- name: {component.name}\n"
-        f"- summary (from a prior high-level pass): {component.summary}\n\n"
-        f"Seed paths to start from:\n{seed_paths}\n\n"
-        "Explore this component in depth and document it."
+        f"- summary (from a prior high-level pass): {component.summary}"
     )
+    sections.append(f"Seed paths to start from:\n{seed_paths}")
+    sections.append("Explore this component in depth and document it.")
+    return "\n\n".join(sections)
 
 
 async def run_code_explorer(
@@ -102,7 +106,7 @@ async def run_code_explorer(
 
     result = await run_agentic_loop(
         system_prompt=SYSTEM_PROMPT,
-        user_prompt=_user_prompt(component),
+        user_prompt=_user_prompt(component, description=config.description),
         tools=tools,
         result_model=ComponentNotesSubmission,
         model_config=model_config,

@@ -14,7 +14,7 @@ from autodoc_harness.agent_loop import (
     run_agentic_loop,
 )
 from autodoc_harness.budget import BudgetTracker
-from autodoc_harness.config import Config
+from autodoc_harness.config import Config, PathNote
 from autodoc_harness.models import ComponentMap, ComponentMapSubmission, TraversalStats
 from autodoc_harness.tools.base import RepoBoundary, ToolSpec
 from autodoc_harness.tools.grep_search import make_grep_search_tool
@@ -32,6 +32,14 @@ Rules:
 - Use `list_dir`, `read_file`, and `grep_search` to explore the repository, \
   starting from the given entry points. All paths are relative to the target \
   repository root.
+- If a system description is provided, use it to understand the domain/purpose of \
+  the code - it should inform how you name and describe components in terms that \
+  match the domain, not just restate it back.
+- Hint paths (if given) are locations worth checking in addition to the entry \
+  points - they are not traversal starting points on their own, and may not be \
+  reachable purely by following imports/references from the entry points (e.g. \
+  config files, or anything else wired up dynamically rather than statically \
+  imported). Use your judgment on whether/how they relate to what you find.
 - Stop at the repository boundary: if a reference points to a third-party/installed \
   dependency, note it by name only - never assume details about code you have not \
   actually read via these tools.
@@ -55,14 +63,28 @@ def _build_tools(boundary: RepoBoundary, max_file_bytes: int) -> list[ToolSpec]:
     ]
 
 
+def _format_path_notes(items: list[PathNote]) -> str:
+    return "\n".join(f"- {item.path}" + (f" - {item.note}" if item.note else "") for item in items)
+
+
 def _user_prompt(config: Config) -> str:
-    entry_points = "\n".join(f"- {ep}" for ep in config.entry_points)
-    return (
+    sections = []
+    if config.description:
+        sections.append(f"System description: {config.description}")
+    sections.append(
         f"Target repository root (use paths relative to this root in every tool "
-        f"call): {config.target_repo}\n\n"
-        f"Entry points to start traversal from:\n{entry_points}\n\n"
-        "Explore from these entry points and build the component map."
+        f"call): {config.target_repo}"
     )
+    sections.append(
+        f"Entry points to start traversal from:\n{_format_path_notes(config.entry_points)}"
+    )
+    if config.hints:
+        sections.append(
+            "Additional locations that may be relevant (not traversal starting "
+            f"points):\n{_format_path_notes(config.hints)}"
+        )
+    sections.append("Explore from these entry points and build the component map.")
+    return "\n\n".join(sections)
 
 
 async def run_master_explorer(
@@ -114,7 +136,7 @@ async def run_master_explorer(
     if result.status != "ok" or result.data is None:
         return ComponentMap(
             target_repo=str(config.target_repo),
-            entry_points=config.entry_points,
+            entry_points=[ep.path for ep in config.entry_points],
             components=[],
             unresolved_notes=[
                 f"Master Explorer did not complete: {result.status} "
@@ -129,7 +151,7 @@ async def run_master_explorer(
     assert isinstance(submission, ComponentMapSubmission)
     return ComponentMap(
         target_repo=str(config.target_repo),
-        entry_points=config.entry_points,
+        entry_points=[ep.path for ep in config.entry_points],
         components=submission.components,
         unresolved_notes=submission.unresolved_notes,
         generated_at=started_at,

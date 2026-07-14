@@ -157,3 +157,79 @@ def test_api_base_flows_through_stage_resolution() -> None:
     resolved = cfg.model.resolved_for_stage("master_explorer")
     assert resolved.api_base == "http://localhost:11434"
     assert resolved.api_key_env is None
+
+
+def test_entry_points_accept_bare_strings_and_rich_form() -> None:
+    cfg = Config.model_validate(
+        {
+            "target_repo": "/tmp/repo",
+            "entry_points": [
+                "src/main.py",
+                {"path": "src/api/server.py", "note": "HTTP server entry point"},
+            ],
+            "model": {"name": "anthropic/claude-sonnet-4-5", "api_key_env": "ANTHROPIC_API_KEY"},
+        }
+    )
+    assert cfg.entry_points[0].path == "src/main.py"
+    assert cfg.entry_points[0].note is None
+    assert cfg.entry_points[1].path == "src/api/server.py"
+    assert cfg.entry_points[1].note == "HTTP server entry point"
+
+
+def test_description_and_hints_default_to_absent() -> None:
+    cfg = Config.model_validate(
+        {
+            "target_repo": "/tmp/repo",
+            "entry_points": ["main.py"],
+            "model": {"name": "anthropic/claude-sonnet-4-5", "api_key_env": "ANTHROPIC_API_KEY"},
+        }
+    )
+    assert cfg.description is None
+    assert cfg.hints == []
+
+
+def test_hints_accept_bare_strings_and_rich_form() -> None:
+    cfg = Config.model_validate(
+        {
+            "target_repo": "/tmp/repo",
+            "entry_points": ["main.py"],
+            "hints": ["src/config.py", {"path": "src/schema/", "note": "DB schema directory"}],
+            "model": {"name": "anthropic/claude-sonnet-4-5", "api_key_env": "ANTHROPIC_API_KEY"},
+        }
+    )
+    assert cfg.hints[0].path == "src/config.py"
+    assert cfg.hints[1].note == "DB schema directory"
+
+
+def test_validate_semantics_reports_missing_hint_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    (tmp_path / "main.py").write_text("print('hi')\n")
+    cfg = Config.model_validate(
+        {
+            "target_repo": str(tmp_path),
+            "entry_points": ["main.py"],
+            "hints": ["does-not-exist.py"],
+            "model": {"name": "anthropic/claude-sonnet-4-5", "api_key_env": "ANTHROPIC_API_KEY"},
+        }
+    )
+    issues = validate_config_semantics(cfg)
+    assert any("hint path not found" in issue for issue in issues)
+
+
+def test_validate_semantics_allows_hint_directories(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    (tmp_path / "main.py").write_text("print('hi')\n")
+    (tmp_path / "config").mkdir()
+    cfg = Config.model_validate(
+        {
+            "target_repo": str(tmp_path),
+            "entry_points": ["main.py"],
+            "hints": ["config"],
+            "model": {"name": "anthropic/claude-sonnet-4-5", "api_key_env": "ANTHROPIC_API_KEY"},
+        }
+    )
+    assert validate_config_semantics(cfg) == []

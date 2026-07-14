@@ -169,6 +169,40 @@ async def test_master_explorer_records_extraction_failure_as_unresolved_note(
     assert any("did not complete" in note for note in component_map.unresolved_notes)
 
 
+async def test_master_explorer_prompt_includes_description_and_hints(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "main.py").write_text("print('hi')\n")
+    (tmp_path / "config.py").write_text("SETTING = 1\n")
+    config = Config.model_validate(
+        {
+            "target_repo": str(tmp_path),
+            "description": "A CLI tool that syncs files to S3.",
+            "entry_points": [{"path": "main.py", "note": "CLI entry point"}],
+            "hints": [{"path": "config.py", "note": "Runtime configuration"}],
+            "model": {"name": "anthropic/claude-sonnet-4-5", "api_key_env": "ANTHROPIC_API_KEY"},
+        }
+    )
+    budget = _new_budget(config)
+    captured: dict[str, Any] = {}
+
+    async def capturing_llm_call(**kwargs: Any) -> LlmTurn:
+        captured["messages"] = kwargs["messages"]
+        return _done_turn()
+
+    await run_master_explorer(
+        config,
+        budget,
+        llm_call=capturing_llm_call,
+        structured_call=make_scripted_structured_call([_extraction_content([])]),
+    )
+
+    user_prompt = captured["messages"][1]["content"]
+    assert "A CLI tool that syncs files to S3." in user_prompt
+    assert "main.py" in user_prompt and "CLI entry point" in user_prompt
+    assert "config.py" in user_prompt and "Runtime configuration" in user_prompt
+
+
 async def test_master_explorer_propagates_budget_exceeded(config: Config) -> None:
     budget = BudgetTracker(max_total_cost_usd=100.0, max_run_seconds=0)
     with pytest.raises(BudgetExceededError):
